@@ -12,7 +12,7 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
       runtime: cdk.aws_lambda.Runtime.PYTHON_3_9,
       timeout: cdk.Duration.seconds(20),
       handler: 'app.s3_thumbnail_generator',
-      code: cdk.aws_lambda.Code.fromAsset(join(__dirname, '../lambda')),
+      code: cdk.aws_lambda.Code.fromAsset(join(__dirname, '../lambdas')),
       environment: {
         REGION_NAME: 'us-east-1',
         THUMBNAIL_SIZE: '128',
