@@ -1,9 +1,11 @@
 import * as cdk from 'aws-cdk-lib';
 import { RemovalPolicy } from 'aws-cdk-lib';
+import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Function } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { join } from 'path';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
 
 export class ThumbnailServiceCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -25,5 +27,19 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
     });
 
     s3Bucket.grantReadWrite(handler);
+
+    s3Bucket.addEventNotification(
+      s3.EventType.OBJECT_CREATED,
+      new s3n.LambdaDestination(handler)
+    );
+
+    handler.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        // actions: ['s3:*'],
+        actions: ['s3:GetObject', 's3:PutObject'],
+        resources: ['*'],
+      })
+    );
   }
 }
