@@ -1,5 +1,86 @@
+import boto3
+from io import BytesIO
+from PIL import Image, ImageOps
+
+import os
+import uuid
+import json
+
+
+s3 = boto3.client('s3')
+
+size = int(os.environ.get('THUMBNAIL_SIZE'))
+# size = int(os.environ.get('THUMBNAIL_SIZE', 128))
+
+
 def s3_thumbnail_generator(event, context):
-    print("should shrink image to thumbnail size")
+    print("Event:::", event)
 
-    return "This was triggerd by an s3 Bucket event. (should shrink image)"
+    bucket_name = event['Records'][0]['s3']['bucket']['name']
+    key = event['Records'][0]['s3']['object']['key']
+    img_size = event['Records'][0]['s3']['object']['size']
 
+    if (not key.endswith('_thumbnail.png')):
+        # get the image from s3
+        image = s3.get_object(Bucket=bucket_name, Key=key)
+
+        # resize the image
+        thumbnail = image_to_thumbnail(image)
+
+        # get the new filename
+        thumbnail_key = new_filename(key)
+
+        # upload the file
+        url = upload_to_s3(bucket_name, thumbnail, thumbnail_key, img_size)
+
+        print("Image:::", url)
+
+        return url
+
+
+def get_s3_image(bucket, key):
+    response = s3.get_object(Bucket=bucket, Key=key)
+    image_content = response['Body'].read()
+
+    file = BytesIO(image_content)
+    img = Image.open(file)
+    return img
+
+
+def image_to_thumbnail(image):
+    return ImageOps.fit(image(size, size), Image.Analytics)
+
+# def new_filename(key):
+#     key_split = key.split('.')
+#     key_split[-1] = '_thumbnail.png'
+#     return '.'.join(key_split)
+
+
+def new_filename(key):
+    key_split = key.split('.')
+    return key_split[0] + '_thumbnail.png'
+
+
+def upload_to_s3(bucket, key, image, img_size):
+    out_thumbnail = BytesIO()
+
+    out_thumbnail.save(out_thumbnail, 'PNG')
+    out_thumbnail.seek(0)
+
+    response = s3.put_object(
+        ACL='public-read',
+        Body=out_thumbnail,
+        Bcket=bucket,
+        ContentType='images/png',
+        Key=key
+    )
+
+    print('response', response)
+
+    url = '{}/{}/{}'.format(s3.meta.endpoint_url, bucket, key)
+    print('response', url)
+
+    # save image url to db
+    # todo:
+
+    return url
