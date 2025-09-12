@@ -57,7 +57,7 @@ def image_to_thumbnail(image):
 
 
 def new_filename(key):
-    key_split = key.split('.')
+    key_split = key.rsplit('.', 1)
     return key_split[0] + '_thumbnail.png'
 
 
@@ -70,8 +70,8 @@ def upload_to_s3(bucket, key, image, img_size):
     response = s3.put_object(
         ACL='public-read',
         Body=out_thumbnail,
-        Bcket=bucket,
-        ContentType='images/png',
+        Bucket=bucket,
+        ContentType='image/png',
         Key=key
     )
 
