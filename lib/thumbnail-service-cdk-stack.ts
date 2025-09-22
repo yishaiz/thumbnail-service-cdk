@@ -11,7 +11,7 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
     const handler = new Function(this, 'handler-function-resizeImg', {
-      runtime: cdk.aws_lambda.Runtime.PYTHON_3_9,
+      runtime: cdk.aws_lambda.Runtime.PYTHON_3_13,
       timeout: cdk.Duration.seconds(20),
       handler: 'app.s3_thumbnail_generator',
       code: cdk.aws_lambda.Code.fromAsset(join(__dirname, '../lambdas')),
