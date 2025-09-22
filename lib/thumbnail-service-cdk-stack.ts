@@ -11,7 +11,7 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
     const handler = new Function(this, 'handler-function-resizeImg', {
-      runtime: cdk.aws_lambda.Runtime.PYTHON_3_13,
+      runtime: cdk.aws_lambda.Runtime.PYTHON_3_11,
       timeout: cdk.Duration.seconds(20),
       handler: 'app.s3_thumbnail_generator',
       code: cdk.aws_lambda.Code.fromAsset(join(__dirname, '../lambdas')),
@@ -20,7 +20,9 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
           this,
           'PIL',
           // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p39-Pillow:15'
-          'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p39-pillow:1'
+          // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p39-pillow:1'
+          'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p311-google-cloud-bigquery:22'
+          //
         ),
       ],
       environment: {
