@@ -10,23 +10,33 @@ import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
 export class ThumbnailServiceCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    const pillowLayer = new LayerVersion(this, 'PillowLayer', {
+      code: cdk.aws_lambda.Code.fromAsset(
+        join(__dirname, '../lambda-layer-pillow')
+      ), // נתיב לתיקייה שמכילה את קובץ ה־ZIP
+      compatibleRuntimes: [cdk.aws_lambda.Runtime.PYTHON_3_13],
+      description: 'Layer with Pillow for image processing',
+    });
+
     const handler = new Function(this, 'handler-function-resizeImg', {
-      runtime: cdk.aws_lambda.Runtime.PYTHON_3_12,
+      runtime: cdk.aws_lambda.Runtime.PYTHON_3_13,
       timeout: cdk.Duration.seconds(20),
       handler: 'app.s3_thumbnail_generator',
       code: cdk.aws_lambda.Code.fromAsset(join(__dirname, '../lambdas')),
-      layers: [
-        LayerVersion.fromLayerVersionArn(
-          this,
-          'PIL',
-          // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p39-Pillow:15'
-          // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p39-pillow:1'
-          // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p311-google-cloud-bigquery:22'
-             'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p311-pillow:1' 
+      layers: [pillowLayer],
+      // LayerVersion.fromLayerVersionArn(
+      //   this,
+      //   'PIL',
+      //   // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p39-Pillow:15'
+      //   // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p39-pillow:1'
+      //   // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p311-google-cloud-bigquery:22'
+      //     //  'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p311-pillow:1'
+      //     'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p312-pillow:1'
 
-          //
-        ),
-      ],
+      //   //
+      // ),
+      // ],
       environment: {
         REGION_NAME: 'us-east-1',
         THUMBNAIL_SIZE: '128',
