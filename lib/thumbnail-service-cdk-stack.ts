@@ -22,8 +22,7 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
           // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p39-Pillow:15'
           // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p39-pillow:1'
           // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p311-google-cloud-bigquery:22'
-             'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p311-pillow:1'
-             'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p311-pillow:1' // זה הנכון!
+             'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p311-pillow:1' 
 
           //
         ),
