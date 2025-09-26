@@ -38,8 +38,14 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
     const s3Bucket = new s3.Bucket(this, 'photo-bucket', {
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
-      // For practice only: allow public bucket policies (still blocks ACLs)
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ACLS,
+      // Allow ACLs, block only public bucket policies (practice only)
+      objectOwnership: s3.ObjectOwnership.OBJECT_WRITER,
+      blockPublicAccess: new s3.BlockPublicAccess({
+        blockPublicAcls: false,
+        ignorePublicAcls: false,
+        blockPublicPolicy: true,
+        restrictPublicBuckets: false,
+      }),
     });
 
     s3Bucket.grantReadWrite(handler);
@@ -49,19 +55,7 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
       new s3n.LambdaDestination(handler)
     );
 
-    // Public read for thumbnails only (practice mode). Keep other objects private.
-    s3Bucket.addToResourcePolicy(
-      new PolicyStatement({
-        sid: 'PublicReadThumbnailsOnly',
-        effect: Effect.ALLOW,
-        principals: [new cdk.aws_iam.AnyPrincipal()],
-        actions: ['s3:GetObject'],
-        resources: [
-          s3Bucket.arnForObjects('*_thumbnail'),
-          s3Bucket.arnForObjects('*_thumbnail.*'),
-        ],
-      })
-    );
+    // No public bucket policy; public access will be via object ACLs only.
 
     handler.addToRolePolicy(
       new PolicyStatement({
