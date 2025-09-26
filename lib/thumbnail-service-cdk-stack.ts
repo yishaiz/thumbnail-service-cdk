@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { RemovalPolicy } from 'aws-cdk-lib';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Function } from 'aws-cdk-lib/aws-lambda';
+import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 import { join } from 'path';
 import * as s3 from 'aws-cdk-lib/aws-s3';
@@ -11,6 +12,15 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    const table = new Table(this, 'thumbnail-tbl', {
+      partitionKey: {
+        name: 'id',
+        type: cdk.aws_dynamodb.AttributeType.STRING,
+      },
+      billingMode: cdk.aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: RemovalPolicy.DESTROY, // NOT recommended for production code
+    });
+
     const handler = new Function(this, 'handler-function-resizeImg', {
       runtime: cdk.aws_lambda.Runtime.PYTHON_3_12,
       timeout: cdk.Duration.seconds(20),
@@ -18,21 +28,11 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
       code: cdk.aws_lambda.Code.fromAsset(join(__dirname, '../lambdas')),
       environment: {
         REGION_NAME: 'us-east-1',
+        MY_Table: table.tableName,
       },
     });
 
-    // LayerVersion.fromLayerVersionArn(
-    //   this,
-    //   'PIL',
-    //   // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p39-Pillow:15'
-    //   // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p39-pillow:1'
-    //   // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p311-google-cloud-bigquery:22'
-    //     //  'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p311-pillow:1'
-    //     'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p312-pillow:1'
-
-    //   //
-    // ),
-    // ],
+    table.grantReadWriteData(handler);
 
     const s3Bucket = new s3.Bucket(this, 'photo-bucket', {
       removalPolicy: RemovalPolicy.DESTROY,
@@ -49,7 +49,6 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
     handler.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        // actions: ['s3:*'],
         actions: ['s3:GetObject', 's3:PutObject'],
         resources: ['*'],
       })
