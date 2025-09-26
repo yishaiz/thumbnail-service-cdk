@@ -23,7 +23,7 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
               'bash',
               '-lc',
               // Install Pillow into the required layer directory structure at /asset-output/python
-              'pip install --no-cache-dir Pillow -t /asset-output/python',
+              'mkdir -p /asset-output/python && python3 -m pip install --no-cache-dir --prefer-binary Pillow -t /asset-output/python',
             ],
           },
         }
