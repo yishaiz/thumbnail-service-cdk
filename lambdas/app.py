@@ -1,5 +1,7 @@
 import boto3
 import os
+# from botocore.exceptions import ClientError
+import uuid
 
 
 s3 = boto3.client('s3')
@@ -28,7 +30,32 @@ def s3_thumbnail_generator(event, context):
 
     url = build_public_url(bucket_name, thumbnail_key, region)
     print('Copied to', url)
+
+    s3_save_thumbnail_url_to_dynamodb(url)
+
     return url
+
+
+def s3_save_thumbnail_url_to_dynamodb(url):
+    dynamodb = boto3.resource('dynamodb')
+    # table_name = os.environ.get('MY_Table', 'thumbnail-tbl')
+    table_name = os.environ.get('MY_Table')
+    table = dynamodb.Table(table_name)
+
+    item = {
+        'id': str(uuid.uuid4()),
+        'url': url,
+        'createdAt': str(datetime.now()),
+        'updtedAt': str(datetime.now()),
+    }
+
+    response = table.put_item(Item=item)
+    
+    print(f"Successfully inserted item into {table_name}: {item}")
+
+    # try:
+    # except ClientError as e:
+    #     print(f"Failed to insert item into {table_name}: {e.response['Error']['Message']}")
 
 
 def new_filename(key):
