@@ -13,19 +13,25 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
 
     const pillowLayer = new LayerVersion(this, 'PillowLayer', {
       code: cdk.aws_lambda.Code.fromAsset(
-        join(__dirname, '../lambda-layer-pillow')
-      ), // נתיב לתיקייה שמכילה את קובץ ה־ZIP
-      compatibleRuntimes: [cdk.aws_lambda.Runtime.PYTHON_3_13],
+        join(__dirname, '../lambda-layer-pillow/pillow-layer.zip')
+      ),
+      compatibleRuntimes: [cdk.aws_lambda.Runtime.PYTHON_3_12],
       description: 'Layer with Pillow for image processing',
     });
 
     const handler = new Function(this, 'handler-function-resizeImg', {
-      runtime: cdk.aws_lambda.Runtime.PYTHON_3_13,
+      runtime: cdk.aws_lambda.Runtime.PYTHON_3_12,
       timeout: cdk.Duration.seconds(20),
       handler: 'app.s3_thumbnail_generator',
       code: cdk.aws_lambda.Code.fromAsset(join(__dirname, '../lambdas')),
       layers: [pillowLayer],
-      // LayerVersion.fromLayerVersionArn(
+      environment: {
+        REGION_NAME: 'us-east-1',
+        THUMBNAIL_SIZE: '128',
+      },
+    });
+
+          // LayerVersion.fromLayerVersionArn(
       //   this,
       //   'PIL',
       //   // 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p39-Pillow:15'
@@ -37,11 +43,6 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
       //   //
       // ),
       // ],
-      environment: {
-        REGION_NAME: 'us-east-1',
-        THUMBNAIL_SIZE: '128',
-      },
-    });
 
     const s3Bucket = new s3.Bucket(this, 'photo-bucket', {
       removalPolicy: RemovalPolicy.DESTROY,
