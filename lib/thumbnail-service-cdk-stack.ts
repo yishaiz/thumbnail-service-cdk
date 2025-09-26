@@ -7,6 +7,7 @@ import { Construct } from 'constructs';
 import { join } from 'path';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
+import { PolicyStatement as S3BucketPolicyStatement } from 'aws-cdk-lib/aws-iam';
 
 export class ThumbnailServiceCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -44,6 +45,20 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
     s3Bucket.addEventNotification(
       s3.EventType.OBJECT_CREATED,
       new s3n.LambdaDestination(handler)
+    );
+
+    // Allow public read of only thumbnail objects without using ACLs
+    s3Bucket.addToResourcePolicy(
+      new S3BucketPolicyStatement({
+        sid: 'PublicReadThumbnailsOnly',
+        effect: Effect.ALLOW,
+        principals: [new cdk.aws_iam.AnyPrincipal()],
+        actions: ['s3:GetObject'],
+        resources: [
+          s3Bucket.arnForObjects('*_thumbnail'),
+          s3Bucket.arnForObjects('*_thumbnail.*'),
+        ],
+      })
     );
 
     handler.addToRolePolicy(

@@ -3,6 +3,7 @@ import boto3
 import os
 import json
 import uuid
+from datetime import datetime
 # from botocore.exceptions import ClientError
 
 
@@ -26,7 +27,6 @@ def s3_thumbnail_generator(event, context):
         Bucket=bucket_name,
         CopySource={'Bucket': bucket_name, 'Key': key},
         Key=thumbnail_key,
-        ACL='public-read',
         MetadataDirective='COPY',
     )
 
@@ -48,7 +48,7 @@ def s3_save_thumbnail_url_to_dynamodb(url):
         'id': str(uuid.uuid4()),
         'url': url,
         'createdAt': str(datetime.now()),
-        'updtedAt': str(datetime.now()),
+        'updatedAt': str(datetime.now()),
     }
 
     response = table.put_item(Item=item)
