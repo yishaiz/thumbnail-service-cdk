@@ -1,7 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { RemovalPolicy } from 'aws-cdk-lib';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Function, LayerVersion, Architecture } from 'aws-cdk-lib/aws-lambda';
+import { Function } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { join } from 'path';
 import * as s3 from 'aws-cdk-lib/aws-s3';
@@ -11,38 +11,13 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const pillowLayer = new LayerVersion(this, 'PillowLayer', {
-      code: cdk.aws_lambda.Code.fromAsset(
-        join(__dirname, '../lambda-layer-pillow'),
-        {
-          bundling: {
-            image: cdk.DockerImage.fromRegistry(
-              'public.ecr.aws/lambda/python:3.12'
-            ),
-            command: [
-              'bash',
-              '-lc',
-              // Install Pillow into the required layer directory structure at /asset-output/python
-              'mkdir -p /asset-output/python && python3 -m pip install --no-cache-dir --prefer-binary Pillow -t /asset-output/python',
-            ],
-          },
-        }
-      ),
-      compatibleRuntimes: [cdk.aws_lambda.Runtime.PYTHON_3_12],
-      description: 'Layer with Pillow for image processing',
-      compatibleArchitectures: [Architecture.X86_64],
-    });
-
     const handler = new Function(this, 'handler-function-resizeImg', {
       runtime: cdk.aws_lambda.Runtime.PYTHON_3_12,
       timeout: cdk.Duration.seconds(20),
       handler: 'app.s3_thumbnail_generator',
       code: cdk.aws_lambda.Code.fromAsset(join(__dirname, '../lambdas')),
-      layers: [pillowLayer],
-      architecture: Architecture.X86_64,
       environment: {
         REGION_NAME: 'us-east-1',
-        THUMBNAIL_SIZE: '128',
       },
     });
 
