@@ -1,6 +1,7 @@
 import datetime
 import boto3
 import os
+import json
 import uuid
 # from botocore.exceptions import ClientError
 
@@ -51,8 +52,14 @@ def s3_save_thumbnail_url_to_dynamodb(url):
     }
 
     response = table.put_item(Item=item)
-    
+
     print(f"Successfully inserted item into {table_name}: {item}")
+
+    return {
+        'statusCode': 200,
+        'headers': {'Content-Type': 'application/json'},
+        'body': json.dumps(response)
+    }
 
     # try:
     # except ClientError as e:
