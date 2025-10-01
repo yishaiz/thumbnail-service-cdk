@@ -1,80 +1,64 @@
-import datetime
 import boto3
 import os
-import json
-import uuid
-from datetime import datetime
-# from botocore.exceptions import ClientError
-
+from urllib.parse import unquote_plus
+from PIL import Image
+from io import BytesIO
 
 s3 = boto3.client('s3')
 
-
 def s3_thumbnail_generator(event, context):
-    print("Event:::", event)
-
-    bucket_name = event['Records'][0]['s3']['bucket']['name']
+    # Get bucket and key from event
+    bucket = event['Records'][0]['s3']['bucket']['name']
     key = event['Records'][0]['s3']['object']['key']
-    region = os.environ.get('REGION_NAME', 'us-east-1')
-
-    if key.endswith('_thumbnail') or key.endswith('_thumbnail.png'):
-        print('Skipping thumbnail copy for already-processed object')
-        return build_public_url(bucket_name, key, region)
-
-    thumbnail_key = new_filename(key)
-
-    s3.copy_object(
-        Bucket=bucket_name,
-        CopySource={'Bucket': bucket_name, 'Key': key},
-        Key=thumbnail_key,
-        MetadataDirective='COPY',
-        # ACL='public-read',
-    )
-
-    url = build_public_url(bucket_name, thumbnail_key, region)
-    print('Copied to', url)
-
-    s3_save_thumbnail_url_to_dynamodb(url)
-
-    return url
-
-
-def s3_save_thumbnail_url_to_dynamodb(url):
-    dynamodb = boto3.resource('dynamodb')
-    # table_name = os.environ.get('MY_Table', 'thumbnail-tbl')
-    table_name = os.environ.get('MY_Table')
-    table = dynamodb.Table(table_name)
-
-    item = {
-        'id': str(uuid.uuid4()),
-        'url': url,
-        'createdAt': str(datetime.now()),
-        'updatedAt': str(datetime.now()),
-    }
-
-    response = table.put_item(Item=item)
-
-    print(f"Successfully inserted item into {table_name}: {item}")
-
-    return {
-        'statusCode': 200,
-        'headers': {'Content-Type': 'application/json'},
-        'body': json.dumps(response)
-    }
-
-    # try:
-    # except ClientError as e:
-    #     print(f"Failed to insert item into {table_name}: {e.response['Error']['Message']}")
-
-
-def new_filename(key):
-    if '.' in key:
-        base, ext = key.rsplit('.', 1)
-        return f"{base}_thumbnail.{ext}"
-    return key + '_thumbnail'
-
-
-def build_public_url(bucket: str, key: str, region: str) -> str:
-    if region == 'us-east-1':
-        return f"https://{bucket}.s3.amazonaws.com/{key}"
-    return f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
+    
+    # ✅ IMPORTANT: Decode URL-encoded key
+    key = unquote_plus(key)
+    
+    print(f"Processing: {bucket}/{key}")
+    
+    # Skip if already a thumbnail
+    if key.startswith('thumbnails/'):
+        print("Already a thumbnail, skipping")
+        return
+    
+    # Skip non-image files
+    if not key.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+        print("Not an image file, skipping")
+        return
+    
+    try:
+        # Download the image
+        response = s3.get_object(Bucket=bucket, Key=key)
+        image_content = response['Body'].read()
+        
+        # Create thumbnail
+        img = Image.open(BytesIO(image_content))
+        img.thumbnail((200, 200))
+        
+        # Save thumbnail to bytes
+        buffer = BytesIO()
+        img_format = img.format or 'JPEG'
+        img.save(buffer, img_format)
+        buffer.seek(0)
+        
+        # Generate thumbnail key
+        filename = os.path.basename(key)
+        thumbnail_key = f"thumbnails/{filename}"
+        
+        # Upload thumbnail (no ACL parameter!)
+        s3.put_object(
+            Bucket=bucket,
+            Key=thumbnail_key,
+            Body=buffer.getvalue(),
+            ContentType=response['ContentType']
+        )
+        
+        print(f"Thumbnail created: {thumbnail_key}")
+        return {
+            'statusCode': 200,
+            'body': f'Thumbnail created: {thumbnail_key}'
+        }
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        raise e
