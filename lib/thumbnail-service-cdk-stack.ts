@@ -48,6 +48,8 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
       }),
     });
 
+    s3Bucket.grantPublicAccess();
+
     s3Bucket.grantReadWrite(handler);
 
     s3Bucket.addEventNotification(

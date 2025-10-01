@@ -28,7 +28,7 @@ def s3_thumbnail_generator(event, context):
         CopySource={'Bucket': bucket_name, 'Key': key},
         Key=thumbnail_key,
         MetadataDirective='COPY',
-        ACL='public-read',
+        # ACL='public-read',
     )
 
     url = build_public_url(bucket_name, thumbnail_key, region)
