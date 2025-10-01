@@ -7,7 +7,6 @@ import { Construct } from 'constructs';
 import { join } from 'path';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
-import { PolicyStatement as S3BucketPolicyStatement } from 'aws-cdk-lib/aws-iam';
 
 export class ThumbnailServiceCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -19,7 +18,7 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
         type: cdk.aws_dynamodb.AttributeType.STRING,
       },
       billingMode: cdk.aws_dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: RemovalPolicy.DESTROY, // NOT recommended for production code
+      removalPolicy: RemovalPolicy.DESTROY,
     });
 
     const handler = new Function(this, 'handler-function-resizeImg', {
@@ -35,36 +34,41 @@ export class ThumbnailServiceCdkStack extends cdk.Stack {
 
     table.grantReadWriteData(handler);
 
+    // דלי S3 פרטי עם Block Public Access מלא
     const s3Bucket = new s3.Bucket(this, 'photo-bucket', {
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
-      // Allow ACLs, block only public bucket policies (practice only)
-      objectOwnership: s3.ObjectOwnership.OBJECT_WRITER,
-      blockPublicAccess: new s3.BlockPublicAccess({
-        blockPublicAcls: false,
-        ignorePublicAcls: false,
-        blockPublicPolicy: true,
-        restrictPublicBuckets: false,
-      }),
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
     });
 
-    s3Bucket.grantPublicAccess();
-
+    // מעניק הרשאות קריאה וכתיבה ל-Lambda
     s3Bucket.grantReadWrite(handler);
 
+    // מוסיף אירוע S3 להפעלת Lambda
     s3Bucket.addEventNotification(
       s3.EventType.OBJECT_CREATED,
       new s3n.LambdaDestination(handler)
     );
 
-    // No public bucket policy; public access will be via object ACLs only.
-
+    // מוסיף הרשאת CopyObject במפורש
     handler.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        actions: ['s3:GetObject', 's3:PutObject'],
-        resources: ['*'],
+        actions: ['s3:GetObject', 's3:PutObject', 's3:CopyObject'],
+        resources: [s3Bucket.arnForObjects('*')],
       })
     );
+
+    // יצוא שם הדלי כ-Output
+    new cdk.CfnOutput(this, 'BucketName', {
+      value: s3Bucket.bucketName,
+      description: 'The name of the S3 bucket',
+    });
+
+    new cdk.CfnOutput(this, 'TableName', {
+      value: table.tableName,
+      description: 'The name of the DynamoDB table',
+    });
   }
 }
